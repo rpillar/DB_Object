@@ -2,7 +2,7 @@
 
 =head1 NAME
 
-TSM_DB::DB_Object
+DB_Object
 
 =head1 SYNOPSIS
 
