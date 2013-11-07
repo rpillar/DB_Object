@@ -73,7 +73,8 @@ sub init {
 	# initialise the tables data structure.
 	foreach my $field ( @{$self->{fields}} ) {
 		$self->{data}->{$field} = undef;
-	}	
+	}
+	$self->{sa} = SQL::Abstract->new;
 }
 
 # -------------------------------------------------------------------------------------
@@ -100,8 +101,7 @@ sub init {
 sub delete {
     my ( $self, $where ) = @_;
 
-    my $sa = SQL::Abstract->new;
-    my ( $sql, @bind ) = $sa->delete( $self->{table}, $where );
+    my ( $sql, @bind ) = $self->{sa}->delete( $self->{table}, $where );
     my $sth = $self->{dbh}->prepare($sql) || die;
     $sth->execute(@bind) || die;
 
@@ -131,8 +131,7 @@ sub delete {
 sub insert {
     my ( $self, $field_vals ) = @_;
 
-    my $sa = SQL::Abstract->new;
-    my ( $sql, @bind ) = $sa->insert( $self->table(), $field_vals );
+    my ( $sql, @bind ) = $self->{sa}->insert( $self->table(), $field_vals );
     my $sth = $self->{dbh}->prepare($sql) || return "prepare : insert failed - table $self->{table} : $DBI::errstr\n\n";
     $sth->execute(@bind) || return "execute : insert failed - table $self->{table} : $DBI::errstr\n\n";
 
@@ -187,8 +186,7 @@ sub last_insert_id {
 sub load {
     my ( $self, $fields_ref, $where, $order ) = @_;
 
-    my $sa = SQL::Abstract->new;
-    my ( $sql, @bind ) = $sa->select( $self->{table}, $fields_ref, $where, $order );
+    my ( $sql, @bind ) = $self->{sa}->select( $self->{table}, $fields_ref, $where, $order );
     my $sth = $self->{dbh}->prepare($sql)
         || return "prepare - load failed : $DBI::errstr\n\n";
     $sth->execute(@bind)
@@ -237,8 +235,7 @@ sub load {
 sub load_as_aggregate {
     my ( $self, $field, $where ) = @_;
 
-    my $sa = SQL::Abstract->new;
-    my ( $sql, @bind ) = $sa->select( $self->{table}, $field, $where );
+    my ( $sql, @bind ) = $self->{sa}->select( $self->{table}, $field, $where );
     my $sth = $self->{dbh}->prepare($sql) || die "prepare - load failed : $DBI::errstr\n\n";
     $sth->execute(@bind) || die "execute - load failed : $DBI::errstr\n\n";
     my @results = $sth->fetchrow_array();
@@ -275,8 +272,7 @@ sub load_as_distinct {
         $where = { $field->[0] => { '!=', undef }, };
     }
 
-    my $sa = SQL::Abstract->new;
-    my ( $sql, @bind ) = $sa->select( $self->{table}, $field, $where );
+    my ( $sql, @bind ) = $self->{sa}->select( $self->{table}, $field, $where );
     my $sth = $self->{dbh}->prepare($sql) || die "prepare - load failed : $DBI::errstr\n\n";
     $sth->execute(@bind) || die "execute - load failed : $DBI::errstr\n\n";
     my $results = $sth->fetchall_arrayref();
@@ -333,8 +329,7 @@ sub load_each {
 
     # only perform the prepare and execute once - otherwise just get the data ...
     unless ( $self->{query} ) {
-        my $sa = SQL::Abstract->new;
-        my ( $sql, @bind ) = $sa->select( $self->{table}, $fields_ref, $where, $order );
+        my ( $sql, @bind ) = $self->{sa}->select( $self->{table}, $fields_ref, $where, $order );
         my $sth = $self->{dbh}->prepare($sql)
             || return "prepare - load_each failed : $DBI::errstr\n\n";
         $sth->execute(@bind)
@@ -417,8 +412,7 @@ sub next_rec {
 sub update {
     my ( $self, $field_vals, $where ) = @_;
 
-    my $sa = SQL::Abstract->new;
-    my ( $sql, @bind ) = $sa->update( $self->table(), $field_vals, $where );
+    my ( $sql, @bind ) = $self->{sa}->update( $self->table(), $field_vals, $where );
     my $sth = $self->{dbh}->prepare($sql) || return "prepare : update failed - table $self->{table} : $DBI::errstr\n\n";
     $sth->execute(@bind) || return "execute : update failed - table $self->{table} : $DBI::errstr\n\n";
 
@@ -426,29 +420,6 @@ sub update {
 }
 
 # -------------------------------------------------------------------------------------
-
-#################### subroutine header start ###################
-
-=head2 _debug_output
-
- Usage     : _debug_output( $message );
- Purpose   : write the message to a file 
- Returns   : nothing
- Argument  : an output string / message
- Comment   : never call this method directly - only from internal methods
-
-=cut
-
-#################### subroutine header end ####################
-
-sub _debug_output {
-    my $self   = shift;
-    my $output = shift;
-
-    open FILE, '>', '/tmp/db_output.txt';
-    print FILE $output;
-    close FILE;
-}
 
 __PACKAGE__->meta->make_immutable;
 
